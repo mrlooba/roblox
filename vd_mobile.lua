@@ -173,7 +173,7 @@ local function ApplyHighlight(obj, color)
             lbl.Size = UDim2.new(1, 0, 1, 0)
             lbl.BackgroundTransparency = 1
             lbl.TextScaled = true
-            lbl.TextColor3 = player and GetPlayerESPColor(player) or Color3.new(1,1,1)
+            lbl.TextColor3 = color
             lbl.TextStrokeColor3 = Color3.new(0,0,0)
             lbl.TextStrokeTransparency = 0.5
             lbl.Font = Enum.Font.SourceSansBold
@@ -188,7 +188,6 @@ local function ApplyHighlight(obj, color)
                         dist = math.floor((localPlayer.Character.HumanoidRootPart.Position - attachPart.Position).Magnitude)
                     end
                     lbl.Text = string.format("%s | %d studs", nameText, dist)
-                    lbl.TextColor3 = player and GetPlayerESPColor(player) or Color3.new(1,1,1)
                     task.wait(0.12)
                 end
             end)
@@ -210,12 +209,6 @@ local function GetRole(p)
         end
     end
     return "Survivor"
-end
-
-local function GetPlayerESPColor(p)
-    local role = p and GetRole(p) or "Survivor"
-    local config = Config.ESP.Players[role]
-    return config and config.Color or Color3.fromRGB(255, 255, 255)
 end
 
 local function SetupPlayerESP(p)
