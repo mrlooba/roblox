@@ -1,0 +1,351 @@
+-- [[ STABLE SCRIPT: TOGGLE ESP & PRECISION SKILL CHECK ]] --
+-- Credits: Rxmmy modified by Hamster Kaget
+-- Controls: V Key (Toggle ESP) | Skill Check: Always ON
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local localPlayer = Players.LocalPlayer
+
+-- Detect if running on mobile or PC
+local IsMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+
+----------------------------------------------------------------
+-- SETTINGS & CONFIGURATION
+----------------------------------------------------------------
+local Config = {
+    ESP = {
+        Enabled = true,
+        Players = {
+            ["Killer"] = {Color = Color3.fromRGB(255, 93, 108)},
+            ["Survivor"] = {Color = Color3.fromRGB(64, 224, 255)}
+        }
+    }
+}
+
+----------------------------------------------------------------
+-- TOGGLE SYSTEM (V KEY / MOBILE BUTTON)
+----------------------------------------------------------------
+UserInputService.InputBegan:Connect(function(input, processed)
+    if not processed and input.KeyCode == Enum.KeyCode.V then
+        SetESPEnabled(not Config.ESP.Enabled)
+    end
+end)
+
+local MobileToggleGui = nil
+local function SetESPEnabled(enabled)
+    Config.ESP.Enabled = enabled
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        local h = obj:FindFirstChild("RxmmyESP")
+        if h then h.Enabled = enabled end
+        local g = obj:FindFirstChild("RxmmyESPGui")
+        if g and g:IsA("BillboardGui") then g.Enabled = enabled end
+    end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Character then
+            local h = p.Character:FindFirstChild("RxmmyESP")
+            if h then h.Enabled = enabled end
+            local g = p.Character:FindFirstChild("RxmmyESPGui")
+            if g and g:IsA("BillboardGui") then g.Enabled = enabled end
+        end
+    end
+    
+    if MobileToggleGui and MobileToggleGui:FindFirstChild("ToggleESPButton") then
+        MobileToggleGui.ToggleESPButton.Text = enabled and "ESP: ON" or "ESP: OFF"
+    end
+end
+
+local function SetupMobileToggle()
+    if not IsMobile then return end
+    local PlayerGui = localPlayer:FindFirstChild("PlayerGui") or localPlayer:WaitForChild("PlayerGui")
+    if PlayerGui:FindFirstChild("RxmmyMobileToggleGui") then
+        MobileToggleGui = PlayerGui:FindFirstChild("RxmmyMobileToggleGui")
+        return
+    end
+
+    local screen = Instance.new("ScreenGui")
+    screen.Name = "RxmmyMobileToggleGui"
+    screen.ResetOnSpawn = false
+    screen.Parent = PlayerGui
+    MobileToggleGui = screen
+
+    local btn = Instance.new("TextButton")
+    btn.Name = "ToggleESPButton"
+    btn.Size = UDim2.new(0,140,0,42)
+    btn.Position = UDim2.new(1, -150, 1, -150)
+    btn.AnchorPoint = Vector2.new(0,0)
+    btn.BackgroundTransparency = 0.2
+    btn.BackgroundColor3 = Color3.fromRGB(30,30,30)
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 18
+    btn.Text = Config.ESP.Enabled and "ESP: ON" or "ESP: OFF"
+    btn.Parent = screen
+    btn.Active = true
+    
+    local dragging, dragInput, dragStart, startPos = false, nil, nil, nil
+
+    btn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragInput = input
+            dragStart = input.Position
+            startPos = btn.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    dragInput = nil
+                end
+            end)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging and dragStart and startPos then
+            local delta = input.Position - dragStart
+            btn.Position = UDim2.new(0, startPos.X.Offset + delta.X, 0, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    btn.MouseButton1Click:Connect(function()
+        SetESPEnabled(not Config.ESP.Enabled)
+    end)
+end
+
+----------------------------------------------------------------
+-- ESP SYSTEM (STABLE)
+----------------------------------------------------------------
+local function ApplyHighlight(obj, color)
+    if not obj or obj == localPlayer.Character or obj:FindFirstChild("RxmmyESP") then return end
+    
+    local h = Instance.new("Highlight")
+    h.Name = "RxmmyESP"
+    h.Adornee = obj
+    h.FillColor = color
+    h.OutlineColor = Color3.new(1, 1, 1)
+    h.FillTransparency = 0.7
+    h.OutlineTransparency = 0.2
+    h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    h.Enabled = Config.ESP.Enabled
+    h.Parent = obj
+    
+    if typeof(obj) == "Instance" and obj:IsA("Model") then
+        local player = Players:GetPlayerFromCharacter(obj)
+        local attachPart = obj:FindFirstChild("Head") or obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
+        if attachPart then
+            local existingGui = attachPart:FindFirstChild("RxmmyESPGui") or obj:FindFirstChild("RxmmyESPGui")
+            if existingGui then existingGui:Destroy() end
+
+            local gui = Instance.new("BillboardGui")
+            gui.Name = "RxmmyESPGui"
+            gui.Adornee = attachPart
+            gui.Size = UDim2.new(0, 160, 0, 28)
+            gui.StudsOffset = Vector3.new(0, 2.6, 0)
+            gui.AlwaysOnTop = true
+            gui.Enabled = Config.ESP.Enabled
+            gui.Parent = attachPart
+
+            local lbl = Instance.new("TextLabel")
+            lbl.Name = "RxmmyESPLabel"
+            lbl.Size = UDim2.new(1, 0, 1, 0)
+            lbl.BackgroundTransparency = 1
+            lbl.TextScaled = true
+            lbl.TextColor3 = color 
+            lbl.TextStrokeColor3 = Color3.new(0,0,0)
+            lbl.TextStrokeTransparency = 0.5
+            lbl.Font = Enum.Font.SourceSansBold
+            lbl.Parent = gui
+
+            task.spawn(function()
+                while gui and gui.Parent do
+                    local nameText = player and player.Name or (obj.Name or "Player")
+                    local dist = 0
+                    if localPlayer and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") and attachPart and attachPart.Position then
+                        dist = math.floor((localPlayer.Character.HumanoidRootPart.Position - attachPart.Position).Magnitude)
+                    end
+                    lbl.Text = string.format("%s | %d studs", nameText, dist)
+                    task.wait(0.12)
+                end
+            end)
+        end
+    end
+end
+
+local function GetRole(p)
+    if p.Team and localPlayer.Team then
+        local teamName = p.Team.Name:lower()
+        local myTeam = localPlayer.Team.Name:lower()
+        if teamName:find("killer") or teamName:find("murderer") or teamName:find("hunter") or teamName:find("slasher") or teamName:find("beast") then 
+            return "Killer" 
+        end
+        if myTeam:find("survivor") and teamName ~= myTeam then return "Killer" end
+    end
+    return "Survivor"
+end
+
+local function SetupPlayerESP(p)
+    if p == localPlayer then return end
+    local function Refresh()
+        if p.Character then
+            local existing = p.Character:FindFirstChild("RxmmyESP")
+            if existing then existing:Destroy() end
+            local existingGui = p.Character:FindFirstChild("RxmmyESPGui")
+            if existingGui then existingGui:Destroy() end
+            task.wait(1)
+            ApplyHighlight(p.Character, Config.ESP.Players[GetRole(p)].Color)
+        end
+    end
+    p.CharacterAdded:Connect(Refresh)
+    p:GetPropertyChangedSignal("Team"):Connect(Refresh)
+    Refresh()
+end
+
+----------------------------------------------------------------
+-- ANTI-CRASH AUTO SKILL CHECK (V6 - BRUTE FORCE SIGNAL)
+----------------------------------------------------------------
+local function StartSkillCheckLogic()
+    local function ConnectUI()
+        local PlayerGui = localPlayer:WaitForChild("PlayerGui")
+        local CheckGui = PlayerGui:WaitForChild("SkillCheckPromptGui", 10)
+        if not CheckGui then return end
+        
+        local Check = CheckGui:WaitForChild("Check")
+        local Line = Check:WaitForChild("Line")
+        local Goal = Check:WaitForChild("Goal")
+        local HeartbeatConn = nil
+
+        Check:GetPropertyChangedSignal("Visible"):Connect(function()
+            if Check.Visible and localPlayer.Team and localPlayer.Team.Name:lower():find("survivor") then
+                if HeartbeatConn then HeartbeatConn:Disconnect(); HeartbeatConn = nil end
+
+                local lastHandledTime = 0
+                local prevLR = (Line and Line.Rotation or 0) % 360
+                local lastGoalRotation = nil
+                local goalChangedTime = 0
+                local goalIgnoreWindow = 0.02 
+
+                HeartbeatConn = RunService.Stepped:Connect(function()
+                    if not Check.Visible then 
+                        if HeartbeatConn then HeartbeatConn:Disconnect(); HeartbeatConn = nil end
+                        return 
+                    end
+
+                    if not Line or not Goal or not Line.Parent or not Goal.Parent then return end
+
+                    local okG, gr = pcall(function() return Goal.Rotation end)
+                    local okL, lr = pcall(function() return Line.Rotation end)
+                    if not okG or not okL or not gr or not lr then return end
+
+                    gr = gr % 360
+                    if not lastGoalRotation or math.abs(((gr - lastGoalRotation + 180) % 360) - 180) > 0.5 then
+                        lastGoalRotation = gr
+                        goalChangedTime = tick()
+                    end
+                    lr = lr % 360
+                    local gs, ge = (gr + 104) % 360, (gr + 114) % 360
+                    local diff = ((lr - prevLR + 540) % 360) - 180
+                    local moveStart, moveEnd
+                    if diff >= 0 then
+                        moveStart, moveEnd = prevLR, (prevLR + diff) % 360
+                    else
+                        moveStart, moveEnd = (prevLR + diff) % 360, prevLR
+                    end
+
+                    moveStart = (moveStart - 3) % 360
+                    moveEnd = (moveEnd + 3) % 360
+
+                    local now = tick()
+                    if (now - goalChangedTime) < goalIgnoreWindow or (now - lastHandledTime) < 0.008 then
+                        prevLR = lr
+                        return
+                    end
+
+                    local center = (gr + 109) % 360
+                    local function pointInInterval(pt, s, e)
+                        if s <= e then return pt >= s and pt <= e end
+                        return pt >= s or pt <= e
+                    end
+
+                    local crossed = pointInInterval(center, moveStart, moveEnd) or pointInInterval(lr, gs, ge)
+
+                    if crossed then
+                        lastHandledTime = now
+                        
+                        if IsMobile then
+                            task.spawn(function()
+                                local ui = localPlayer:FindFirstChild("PlayerGui")
+                                if not ui then return end
+                                
+                                local targetBtn = nil
+                                pcall(function()
+                                    -- Mengambil tombol berdasarkan referensi path Anda
+                                    targetBtn = ui:FindFirstChild("Survivor-mob").Controls.action.check
+                                end)
+
+                                if targetBtn then
+                                    -- METODE 1: Memaksa pemicu (firesignal) bawaan executor
+                                    if firesignal then
+                                        pcall(function() firesignal(targetBtn.Activated) end)
+                                        pcall(function() firesignal(targetBtn.MouseButton1Click) end)
+                                        pcall(function() firesignal(targetBtn.TouchTap) end)
+                                    end
+                                    
+                                    -- METODE 2: Menembak fungsi yang terhubung secara internal
+                                    if getconnections then
+                                        local eventsToFire = {"Activated", "MouseButton1Click", "TouchTap", "MouseButton1Down"}
+                                        for _, eventName in ipairs(eventsToFire) do
+                                            pcall(function()
+                                                for _, conn in ipairs(getconnections(targetBtn[eventName])) do
+                                                    pcall(conn.Function)
+                                                end
+                                            end)
+                                        end
+                                        
+                                        -- Khusus untuk sentuhan layar (Touch)
+                                        pcall(function()
+                                            for _, conn in ipairs(getconnections(targetBtn.InputBegan)) do
+                                                pcall(conn.Function, targetBtn, {
+                                                    UserInputType = Enum.UserInputType.Touch, 
+                                                    UserInputState = Enum.UserInputState.Begin
+                                                })
+                                            end
+                                        end)
+                                    end
+                                end
+                            end)
+                        else
+                            -- Untuk PC
+                            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+                        end
+                    end
+
+                    prevLR = lr
+                end)
+            elseif HeartbeatConn then
+                HeartbeatConn:Disconnect(); HeartbeatConn = nil
+            end
+        end)
+    end
+
+    localPlayer.CharacterAdded:Connect(function()
+        task.wait(2)
+        ConnectUI()
+    end)
+    ConnectUI()
+end
+
+----------------------------------------------------------------
+-- INITIALIZE
+----------------------------------------------------------------
+task.spawn(StartSkillCheckLogic)
+for _, p in ipairs(Players:GetPlayers()) do SetupPlayerESP(p) end
+Players.PlayerAdded:Connect(SetupPlayerESP)
+SetupMobileToggle()
+
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "Hamster Kaget",
+    Text = "V6: Brute Force Signal Loaded!",
+    Duration = 5
+})
