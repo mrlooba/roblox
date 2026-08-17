@@ -8,9 +8,6 @@ local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local localPlayer = Players.LocalPlayer
 
--- Detect if running on mobile or PC
-local IsMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
-
 ----------------------------------------------------------------
 -- SETTINGS & CONFIGURATION
 ----------------------------------------------------------------
@@ -57,7 +54,7 @@ local function SetESPEnabled(enabled)
 end
 
 local function SetupMobileToggle()
-    if not IsMobile then return end
+    if not (UserInputService.TouchEnabled and not UserInputService.MouseEnabled) then return end
     local PlayerGui = localPlayer:FindFirstChild("PlayerGui") or localPlayer:WaitForChild("PlayerGui")
     if PlayerGui:FindFirstChild("RxmmyMobileToggleGui") then
         MobileToggleGui = PlayerGui:FindFirstChild("RxmmyMobileToggleGui")
@@ -202,7 +199,7 @@ local function SetupPlayerESP(p)
 end
 
 ----------------------------------------------------------------
--- ANTI-CRASH AUTO SKILL CHECK (V6 - BRUTE FORCE SIGNAL)
+-- ANTI-CRASH AUTO SKILL CHECK (V7 - VIM SPACE UNIFIED)
 ----------------------------------------------------------------
 local function StartSkillCheckLogic()
     local function ConnectUI()
@@ -272,53 +269,11 @@ local function StartSkillCheckLogic()
                     if crossed then
                         lastHandledTime = now
                         
-                        if IsMobile then
-                            task.spawn(function()
-                                local ui = localPlayer:FindFirstChild("PlayerGui")
-                                if not ui then return end
-                                
-                                local targetBtn = nil
-                                pcall(function()
-                                    -- Mengambil tombol berdasarkan referensi path Anda
-                                    targetBtn = ui:FindFirstChild("Survivor-mob").Controls.action.check
-                                end)
-
-                                if targetBtn then
-                                    -- METODE 1: Memaksa pemicu (firesignal) bawaan executor
-                                    if firesignal then
-                                        pcall(function() firesignal(targetBtn.Activated) end)
-                                        pcall(function() firesignal(targetBtn.MouseButton1Click) end)
-                                        pcall(function() firesignal(targetBtn.TouchTap) end)
-                                    end
-                                    
-                                    -- METODE 2: Menembak fungsi yang terhubung secara internal
-                                    if getconnections then
-                                        local eventsToFire = {"Activated", "MouseButton1Click", "TouchTap", "MouseButton1Down"}
-                                        for _, eventName in ipairs(eventsToFire) do
-                                            pcall(function()
-                                                for _, conn in ipairs(getconnections(targetBtn[eventName])) do
-                                                    pcall(conn.Function)
-                                                end
-                                            end)
-                                        end
-                                        
-                                        -- Khusus untuk sentuhan layar (Touch)
-                                        pcall(function()
-                                            for _, conn in ipairs(getconnections(targetBtn.InputBegan)) do
-                                                pcall(conn.Function, targetBtn, {
-                                                    UserInputType = Enum.UserInputType.Touch, 
-                                                    UserInputState = Enum.UserInputState.Begin
-                                                })
-                                            end
-                                        end)
-                                    end
-                                end
-                            end)
-                        else
-                            -- Untuk PC
-                            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
-                            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
-                        end
+                        -- Menggunakan taktik dari script temuan Anda: VIM Space Keyboard
+                        -- Bebas mau di Android atau PC, trik ini memaksa game menerima input Spasi
+                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                        task.wait(0.05) -- Jeda krusial agar tidak terlalu cepat
+                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
                     end
 
                     prevLR = lr
@@ -346,6 +301,6 @@ SetupMobileToggle()
 
 game:GetService("StarterGui"):SetCore("SendNotification", {
     Title = "Hamster Kaget",
-    Text = "V6: Brute Force Signal Loaded!",
+    Text = "ESP & Perfect Skill Check ON!",
     Duration = 5
 })
